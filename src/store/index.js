@@ -82,11 +82,26 @@ export default new Vuex.Store({
     },
 
     logout({commit}) {
-      localStorage.removeItem("idToken");
+      localStorage.removeItem("token");
       localStorage.removeItem("userId");
       commit("clearData");
 
       router.push("/")
+    },
+
+    autoLogin({commit}) {
+      const token = localStorage.getItem("token");
+      if(!token) {
+        return;
+      }
+      const userId = localStorage.getItem("userId");
+
+      commit("authUser", {
+        token: token,
+        userId: userId
+      });
+
+      router.push("/dashboard");
     }
   },
 
