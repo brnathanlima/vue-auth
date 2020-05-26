@@ -7,15 +7,10 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
-    signUpUrl:
-      "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" +
-      process.env.VUE_APP_API_KEY,
-    signInUrl:
-      "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +
-      process.env.VUE_APP_API_KEY,
+    singInUrl: process.env.VUE_APP_SIGN_IN_URL,
     idToken: null,
-    userId: null,
     user: null,
+    permissions: null,
   },
 
   getters: {
@@ -28,81 +23,96 @@ export default new Vuex.Store({
     },
   },
 
+  actions: {
+    async login({ state, commit }, authData) {
+      await axios
+        .post(state.singInUrl, {
+          email: authData.email,
+          password: authData.password,
+          headers: {
+            Accept: "*/*",
+            "Content-Type": "application/json",
+          },
+        })
+        .then((res) => {
+          console.log(res);
+
+          commit("authUser", {
+            token: res.data,
+          });
+
+          localStorage.setItem("token", res.data);
+
+          router.push("/dashboard");
+        })
+        .catch((error) => console.log(error));
+
+      axios
+        .get("http://localhost:8000/api/me", {
+          headers: {
+            Authorization: `Bearer ${state.idToken}`,
+            Accept: "*/*",
+            "Content-Type": "application/json",
+          },
+        })
+        .then((res) => {
+          console.log(res);
+
+          commit("setUserAndPermissions", {
+            user: res.data.user,
+            permissions: res.data.permissions,
+          });
+
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          localStorage.setItem(
+            "permissions",
+            JSON.stringify(res.data.permissions)
+          );
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    },
+
+    logout({ commit }) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("permissions");
+
+      commit("clearData");
+
+      router.push("/");
+    },
+
+    autoLogin({ commit }) {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        return;
+      }
+
+      commit("authUser", {
+        token: token,
+      });
+
+      router.push("/dashboard");
+    },
+  },
+
   mutations: {
     authUser(state, userData) {
       state.idToken = userData.token;
-      state.userId = userData.userId;
+    },
+
+    setUserAndPermissions(state, userAndPermissionsData) {
+      state.user = userAndPermissionsData.user;
+      state.permissoios = userAndPermissionsData.permissions;
     },
 
     clearData(state) {
       state.idToken = null;
-      state.userId = null;
-    }
-  },
-
-  actions: {
-    signup({ state, commit }, authData) {
-      axios
-        .post(state.signUpUrl, {
-          email: authData.email,
-          password: authData.password,
-          returnSecureToken: true,
-        })
-        .then((res) => {
-          console.log(res);
-          localStorage.setItem("idToken", res.data.idToken);
-          localStorage.setItem("userId", res.data.userId);
-          commit("authUser", {
-            token: res.data.idToken,
-            userId: res.data.userId,
-          });
-          router.push("/dashboard");
-        })
-        .catch((error) => console.log(error));
+      state.user = null;
+      state.permissions = null;
     },
-
-    login({ state, commit }, authData) {
-      axios
-        .post(state.signInUrl, {
-          email: authData.email,
-          password: authData.password,
-          returnSecureToken: true,
-        })
-        .then((res) => {
-          console.log(res);
-          commit("authUser", {
-            token: res.data.idToken,
-            userId: res.data.localId,
-          });
-          localStorage.setItem("token", res.data.idToken);
-          localStorage.setItem("userId", res.data.localId);
-          router.push("/dashboard");
-        })
-        .catch((error) => console.log(error));
-    },
-
-    logout({commit}) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userId");
-      commit("clearData");
-
-      router.push("/")
-    },
-
-    autoLogin({commit}) {
-      const token = localStorage.getItem("token");
-      if(!token) {
-        return;
-      }
-      const userId = localStorage.getItem("userId");
-
-      commit("authUser", {
-        token: token,
-        userId: userId
-      });
-
-      router.push("/dashboard");
-    }
   },
 
   modules: {},
