@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import axios from "axios";
 import router from "../router/index.js";
+import SecureLS from "secure-ls";
 
 Vue.use(Vuex);
 
@@ -25,6 +26,8 @@ export default new Vuex.Store({
 
   actions: {
     async login({ state, commit }, authData) {
+      var ls = new SecureLS();
+
       await axios
         .post(state.singInUrl, {
           email: authData.email,
@@ -41,7 +44,7 @@ export default new Vuex.Store({
             token: res.data,
           });
 
-          localStorage.setItem("token", res.data);
+          ls.set("token", res.data);
 
           router.push("/dashboard");
         })
@@ -63,11 +66,8 @@ export default new Vuex.Store({
             permissions: res.data.permissions,
           });
 
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-          localStorage.setItem(
-            "permissions",
-            JSON.stringify(res.data.permissions)
-          );
+          ls.set("user", JSON.stringify(res.data.user));
+          ls.set("permissions", JSON.stringify(res.data.permissions));
         })
         .catch((error) => {
           console.log(error);
@@ -75,9 +75,8 @@ export default new Vuex.Store({
     },
 
     logout({ commit }) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("permissions");
+      var ls = new SecureLS();
+      ls.removeAll();
 
       commit("clearData");
 
